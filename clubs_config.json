@@ -1,0 +1,15 @@
+{
+  "refresh_seconds": 60,
+  "clubs": [
+    {"nom": "Club 1", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"},
+    {"nom": "Club 2", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"},
+    {"nom": "Club 3", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"},
+    {"nom": "Club 4", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"},
+    {"nom": "Club 5", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"},
+    {"nom": "Club 6", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"},
+    {"nom": "Club 7", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"},
+    {"nom": "Club 8", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"},
+    {"nom": "Club 9", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"},
+    {"nom": "Club 10", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"}
+  ]
+}
