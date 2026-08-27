@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Classement combiné - Course Concept2</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; background:#f4f4f2; margin:0; padding:20px; color:#222; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .updated { color:#666; font-size:13px; margin-bottom:20px; }
+  .controls { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+  select, button { padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; background:#fff; }
+  table { width:100%; border-collapse:collapse; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+  th, td { padding:10px 12px; text-align:right; border-bottom:1px solid #eee; font-size:14px; }
+  th { background:#fafaf8; font-weight:600; color:#444; }
+  td:last-child, th:last-child { text-align:left; font-weight:600; }
+  tr:hover { background:#fafafa; }
+  .clubs { margin-top:24px; display:flex; flex-wrap:wrap; gap:8px; }
+  .club-badge { padding:4px 10px; border-radius:14px; font-size:12px; background:#eee; }
+  .club-badge.ok { background:#dcf5e6; color:#1a6b3c; }
+  .club-badge.err { background:#fbe3e3; color:#a32d2d; }
+  .empty { text-align:center; padding:40px; color:#888; }
+</style>
+</head>
+<body>
+  <h1>الترتيب الموحد للسباق</h1>
+  <div class="updated" id="updated">جاري التحميل...</div>
+
+  <div class="controls">
+    <select id="categoryFilter"><option value="__all__">كل الفئات</option></select>
+    <button id="refreshBtn">تحديث الآن</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>#</th><th>الاسم</th><th>النادي</th><th>الفئة</th><th>النتيجة</th></tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div id="emptyMsg" class="empty" style="display:none;">لا توجد نتائج بعد. تأكد من إعداد روابط الأندية في clubs_config.json</div>
+
+  <div class="clubs" id="clubs"></div>
+
+<script>
+let lastCategory = "__all__";
+
+async function refresh() {
+  const res = await fetch('/api/results');
+  const data = await res.json();
+
+  const updatedEl = document.getElementById('updated');
+  updatedEl.textContent = data.updated_at ? ('آخر تحديث: ' + data.updated_at + (data.updating ? ' (جاري التحديث...)' : '')) : 'جاري التحميل الأول...';
+
+  const catSelect = document.getElementById('categoryFilter');
+  const current = catSelect.value || lastCategory;
+  catSelect.innerHTML = '<option value="__all__">كل الفئات</option>' +
+    data.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+  if ([...catSelect.options].some(o => o.value === current)) catSelect.value = current;
+  lastCategory = catSelect.value;
+
+  let rows = data.rows;
+  if (lastCategory !== '__all__') rows = rows.filter(r => r.category === lastCategory);
+
+  const tbody = document.getElementById('tbody');
+  const emptyMsg = document.getElementById('emptyMsg');
+  if (!rows.length) {
+    tbody.innerHTML = '';
+    emptyMsg.style.display = 'block';
+  } else {
+    emptyMsg.style.display = 'none';
+    tbody.innerHTML = rows.map((r, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td style="text-align:right">${r.participant || '-'}</td>
+        <td style="text-align:right">${r.club || '-'}</td>
+        <td style="text-align:right">${r.category || '-'}</td>
+        <td>${r.score || '-'}</td>
+      </tr>`).join('');
+  }
+
+  const clubsEl = document.getElementById('clubs');
+  clubsEl.innerHTML = data.clubs.map(c => {
+    const cls = c.statut === 'ok' ? 'ok' : (c.statut === 'non configuré' ? '' : 'err');
+    return `<span class="club-badge ${cls}">${c.nom}: ${c.statut === 'ok' ? c.nb + ' نتيجة' : c.statut}</span>`;
+  }).join('');
+}
+
+document.getElementById('categoryFilter').addEventListener('change', refresh);
+document.getElementById('refreshBtn').addEventListener('click', refresh);
+
+refresh();
+setInterval(refresh, 15000);
+</script>
+</body>
+</html>
