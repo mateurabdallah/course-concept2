@@ -1,8 +1,8 @@
 {
   "refresh_seconds": 60,
   "clubs": [
-    {"nom": "Club 1", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"},
-    {"nom": "Club 2", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"},
+    {"nom": "نادي وهران", "url": "https://raw.githubusercontent.com/mateurabdallah/course-concept2/main/test_club1.csv"},
+    {"nom": "نادي الجزائر", "url": "https://raw.githubusercontent.com/mateurabdallah/course-concept2/main/test_club2.csv"},
     {"nom": "Club 3", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"},
     {"nom": "Club 4", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"},
     {"nom": "Club 5", "url": "https://log.concept2.com/api/ergrace/races/REMPLACER_ID/results/export"},
