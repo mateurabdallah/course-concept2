@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dashboard web pour le classement combiné ErgRace de plusieurs clubs."""
+"""Dashboard web: classement général des clubs + détail par course (catégorie)."""
 
 import os
 import time
@@ -10,7 +10,7 @@ from aggregator import load_config, build_combined_results
 
 app = Flask(__name__)
 
-cache = {"data": {"rows": [], "clubs": [], "categories": []}, "updated_at": None, "last_fetch": 0}
+cache = {"data": {"races": [], "standings": [], "clubs": []}, "updated_at": None, "last_fetch": 0}
 
 
 def get_fresh_data():
@@ -34,11 +34,10 @@ def index():
 def api_results():
     state = get_fresh_data()
     return jsonify({
-        "rows": state["data"]["rows"],
+        "races": state["data"]["races"],
+        "standings": state["data"]["standings"],
         "clubs": state["data"]["clubs"],
-        "categories": state["data"]["categories"],
         "updated_at": state["updated_at"],
-        "updating": False,
     })
 
 
