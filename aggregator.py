@@ -151,6 +151,37 @@ def build_combined_results(config):
     for i, s in enumerate(standings, start=1):
         s["rank"] = i
 
+    return {"races": races, "standings": standings, "clubs": club_status}
+    club_status = []
+    for club in config["clubs"]:
+        name, url = club["nom"], club["url"]
+        if "REMPLACER_ID" in url:
+            club_status.append({"nom": name, "statut": "non configuré", "nb": 0})
+            continue
+        rows, error = fetch_club_results(name, url)
+        if error:
+            club_status.append({"nom": name, "statut": f"erreur: {error}", "nb": 0})
+        else:
+            club_status.append({"nom": name, "statut": "ok", "nb": len(rows)})
+        all_rows.extend(rows)
+
+    by_category = defaultdict(list)
+    for r in all_rows:
+        by_category[r["category"]].append(r)
+
+    races = []
+    club_points = defaultdict(int)
+    for category in sorted(by_category.keys()):
+        ranked = rank_race(by_category[category])
+        for r in ranked:
+            club_points[r["club"]] += r["points"]
+        races.append({"category": category, "results": ranked})
+
+    standings = [{"club": club, "points": pts} for club, pts in club_points.items()]
+    standings.sort(key=lambda s: -s["points"])
+    for i, s in enumerate(standings, start=1):
+        s["rank"] = i
+
     return {"races": races, "standings": standings, "clubs": club_status}        parts = [float(p) for p in parts]
     except ValueError:
         return None
