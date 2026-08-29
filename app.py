@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-"""Dashboard web: classement général des clubs + détail par course (catégorie)."""
+"""Dashboard web: classement général + résultats par course + gestion des listes de départ."""
 
+import csv
+import io
 import os
 import time
 
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request, send_file
 
 from aggregator import load_config, build_combined_results
+from startlist import (
+    parse_engagement_file, load_startlist_data, add_file_entries,
+    clear_startlist_data, group_by_category,
+)
 
 app = Flask(__name__)
 
@@ -41,6 +47,17 @@ def api_results():
     })
 
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+@app.route("/startlist")
+def startlist_page():
+    return render_template("startlist.html")
+
+
+@app.route("/api/startlist")
+def api_startlist():
+    data = load_startlist_data()
+    grouped = group_by_category(data["entries"])
+    races = [{"category": cat, "entries": entries} for cat, entries in grouped.items()]
+    return jsonify({"files": data["files"], "races": races, "total": len(data["entries"])})
+
+
+@app.rout
