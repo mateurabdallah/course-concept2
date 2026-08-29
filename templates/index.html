@@ -3,160 +3,93 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>الترتيب الموحد - سباق Concept2</title>
+<title>نتائج البطولة - سباق Concept2</title>
 <style>
   * { box-sizing: border-box; }
   body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
-    margin: 0;
-    padding: 0;
-    color: #e2e8f0;
-    min-height: 100vh;
+    margin: 0; padding: 0; color: #e2e8f0; min-height: 100vh;
   }
   .header {
     background: linear-gradient(135deg, #1d4ed8 0%, #7c3aed 100%);
-    padding: 28px 20px 24px;
-    text-align: center;
+    padding: 28px 20px 22px; text-align: center;
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
   }
-  .header h1 {
-    margin: 0 0 6px;
-    font-size: 24px;
-    font-weight: 800;
-    color: #fff;
-    letter-spacing: -0.5px;
-  }
-  .header .subtitle {
-    color: rgba(255,255,255,0.85);
-    font-size: 13px;
-  }
-  .container { max-width: 900px; margin: 0 auto; padding: 18px 14px 40px; }
+  .header h1 { margin: 0 0 6px; font-size: 22px; font-weight: 800; color: #fff; }
+  .header .subtitle { color: rgba(255,255,255,0.85); font-size: 12px; }
+  .container { max-width: 900px; margin: 0 auto; padding: 18px 14px 50px; }
 
-  .controls {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 18px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: #0f172a;
-    padding: 10px 0;
+  .section-title {
+    font-size: 16px; font-weight: 800; color: #f1f5f9;
+    margin: 26px 0 12px; display: flex; align-items: center; gap: 8px;
   }
-  select, button {
+  .section-title.first { margin-top: 0; }
+
+  .standings-list { display: flex; flex-direction: column; gap: 6px; }
+  .standing-row {
+    display: flex; align-items: center; gap: 12px;
+    background: #1e293b; border: 1px solid #334155; border-radius: 10px;
     padding: 10px 14px;
-    border-radius: 10px;
-    border: 1px solid #334155;
-    font-size: 14px;
-    background: #1e293b;
-    color: #e2e8f0;
-    font-weight: 600;
   }
-  select { flex: 1; }
-  button#refreshBtn {
-    background: linear-gradient(135deg, #2563eb, #7c3aed);
-    color: #fff;
-    border: none;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
+  .standing-row.r1 { border-color: #eab308; background: linear-gradient(90deg, rgba(234,179,8,0.15), #1e293b); }
+  .standing-row.r2 { border-color: #94a3b8; }
+  .standing-row.r3 { border-color: #d97706; }
+  .s-rank { min-width: 26px; font-weight: 800; color: #94a3b8; font-size: 14px; }
+  .r1 .s-rank { color: #eab308; }
+  .s-club { flex: 1; font-weight: 700; font-size: 14px; color: #f1f5f9; }
+  .s-points { font-weight: 800; font-size: 15px; color: #4ade80; }
+
+  .race-card {
+    background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+    margin-bottom: 12px; overflow: hidden;
   }
-  button#refreshBtn:active { transform: scale(0.97); }
-
-  .card-list { display: flex; flex-direction: column; gap: 8px; }
-  .row-card {
-    background: #1e293b;
-    border-radius: 12px;
-    padding: 12px 14px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    border: 1px solid #334155;
-    transition: transform 0.15s;
+  .race-header {
+    padding: 10px 14px; background: #273449; font-weight: 700; font-size: 13px;
+    color: #93c5fd; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
   }
-  .row-card.top1 { border-color: #eab308; background: linear-gradient(90deg, rgba(234,179,8,0.15), #1e293b); }
-  .row-card.top2 { border-color: #94a3b8; background: linear-gradient(90deg, rgba(148,163,184,0.15), #1e293b); }
-  .row-card.top3 { border-color: #d97706; background: linear-gradient(90deg, rgba(217,119,6,0.15), #1e293b); }
+  .race-body { padding: 6px 10px 10px; }
+  .race-body.collapsed { display: none; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { padding: 6px 6px; text-align: right; }
+  th { color: #64748b; font-weight: 600; font-size: 11px; border-bottom: 1px solid #334155; }
+  td { border-bottom: 1px solid #263548; }
+  td:last-child, th:last-child { text-align: left; font-weight: 700; color: #4ade80; }
+  tr.medal1 td { color: #eab308; }
+  tr.medal2 td { color: #cbd5e1; }
+  tr.medal3 td { color: #d97706; }
 
-  .rank {
-    min-width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: #334155;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-    font-size: 14px;
-    color: #cbd5e1;
-    flex-shrink: 0;
-  }
-  .top1 .rank { background: #eab308; color: #1e293b; }
-  .top2 .rank { background: #94a3b8; color: #1e293b; }
-  .top3 .rank { background: #d97706; color: #1e293b; }
-
-  .info { flex: 1; min-width: 0; }
-  .name { font-weight: 700; font-size: 15px; color: #f1f5f9; }
-  .meta { font-size: 12px; color: #94a3b8; margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; }
-  .meta .club { color: #60a5fa; font-weight: 600; }
-  .meta .cat { background: #334155; padding: 1px 8px; border-radius: 6px; }
-
-  .score { font-weight: 800; font-size: 16px; color: #4ade80; white-space: nowrap; }
-
-  .empty {
-    text-align: center;
-    padding: 60px 20px;
-    color: #64748b;
-  }
-  .empty .icon { font-size: 40px; margin-bottom: 10px; }
-
-  .clubs-status {
-    margin-top: 24px;
-    padding-top: 16px;
-    border-top: 1px solid #334155;
-  }
+  .clubs-status { margin-top: 24px; padding-top: 16px; border-top: 1px solid #334155; }
   .clubs-status h3 { font-size: 13px; color: #94a3b8; margin: 0 0 10px; font-weight: 600; }
   .clubs { display: flex; flex-wrap: wrap; gap: 6px; }
-  .club-badge {
-    padding: 5px 11px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    background: #334155;
-    color: #cbd5e1;
-  }
+  .club-badge { padding: 5px 11px; border-radius: 20px; font-size: 11px; font-weight: 600; background: #334155; color: #cbd5e1; }
   .club-badge.ok { background: rgba(74,222,128,0.15); color: #4ade80; }
   .club-badge.err { background: rgba(248,113,113,0.15); color: #f87171; }
 
-  .updated-bar {
-    font-size: 12px;
-    color: #64748b;
-    text-align: center;
-    margin-top: 10px;
+  .empty { text-align: center; padding: 40px 20px; color: #64748b; }
+  button#refreshBtn {
+    background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; border: none;
+    padding: 8px 16px; border-radius: 10px; font-weight: 700; font-size: 13px;
   }
-  .pulse { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #4ade80; margin-left: 5px; animation: pulse 1.5s infinite; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 </style>
 </head>
 <body>
   <div class="header">
-    <h1>🏁 الترتيب الموحد للسباق</h1>
+    <h1>🏁 نتائج البطولة</h1>
     <div class="subtitle" id="updated">جاري التحميل...</div>
   </div>
 
   <div class="container">
-    <div class="controls">
-      <select id="categoryFilter"><option value="__all__">كل الفئات</option></select>
+    <div style="text-align:left; margin-bottom:10px;">
       <button id="refreshBtn">↻ تحديث</button>
     </div>
 
-    <div class="card-list" id="cardList"></div>
-    <div id="emptyMsg" class="empty" style="display:none;">
-      <div class="icon">🚣</div>
-      لا توجد نتائج بعد<br>
-      <span style="font-size:12px;">تأكد من إعداد روابط الأندية</span>
-    </div>
+    <div class="section-title first">🏆 الترتيب العام للأندية</div>
+    <div class="standings-list" id="standingsList"></div>
+
+    <div class="section-title">📋 نتائج السباقات حسب الفئة</div>
+    <div id="racesList"></div>
+    <div id="emptyMsg" class="empty" style="display:none;">لا توجد نتائج بعد</div>
 
     <div class="clubs-status">
       <h3>حالة الأندية</h3>
@@ -165,52 +98,66 @@
   </div>
 
 <script>
-let lastCategory = "__all__";
+function medalClass(place) {
+  if (place === 1) return 'medal1';
+  if (place === 2) return 'medal2';
+  if (place === 3) return 'medal3';
+  return '';
+}
 
-function medalRank(i) {
-  if (i === 0) return "top1";
-  if (i === 1) return "top2";
-  if (i === 2) return "top3";
-  return "";
+function rankClass(rank) {
+  if (rank === 1) return 'r1';
+  if (rank === 2) return 'r2';
+  if (rank === 3) return 'r3';
+  return '';
 }
 
 async function refresh() {
   const res = await fetch('/api/results');
   const data = await res.json();
 
-  const updatedEl = document.getElementById('updated');
-  updatedEl.innerHTML = data.updated_at
-    ? ('آخر تحديث: ' + data.updated_at + '<span class="pulse"></span>')
-    : 'جاري التحميل الأول...';
+  document.getElementById('updated').textContent = data.updated_at ? ('آخر تحديث: ' + data.updated_at) : 'جاري التحميل الأول...';
 
-  const catSelect = document.getElementById('categoryFilter');
-  const current = catSelect.value || lastCategory;
-  catSelect.innerHTML = '<option value="__all__">كل الفئات</option>' +
-    data.categories.map(c => `<option value="${c}">${c}</option>`).join('');
-  if ([...catSelect.options].some(o => o.value === current)) catSelect.value = current;
-  lastCategory = catSelect.value;
+  const standingsList = document.getElementById('standingsList');
+  if (!data.standings.length) {
+    standingsList.innerHTML = '<div class="empty">لا يوجد ترتيب بعد</div>';
+  } else {
+    standingsList.innerHTML = data.standings.map(s => `
+      <div class="standing-row ${rankClass(s.rank)}">
+        <div class="s-rank">${s.rank}</div>
+        <div class="s-club">${s.club}</div>
+        <div class="s-points">${s.points} نقطة</div>
+      </div>`).join('');
+  }
 
-  let rows = data.rows;
-  if (lastCategory !== '__all__') rows = rows.filter(r => r.category === lastCategory);
-
-  const cardList = document.getElementById('cardList');
+  const racesList = document.getElementById('racesList');
   const emptyMsg = document.getElementById('emptyMsg');
-  if (!rows.length) {
-    cardList.innerHTML = '';
+  if (!data.races.length) {
+    racesList.innerHTML = '';
     emptyMsg.style.display = 'block';
   } else {
     emptyMsg.style.display = 'none';
-    cardList.innerHTML = rows.map((r, i) => `
-      <div class="row-card ${medalRank(i)}">
-        <div class="rank">${i + 1}</div>
-        <div class="info">
-          <div class="name">${r.participant || '-'}</div>
-          <div class="meta">
-            <span class="club">${r.club || '-'}</span>
-            ${r.category ? `<span class="cat">${r.category}</span>` : ''}
-          </div>
+    racesList.innerHTML = data.races.map((race, idx) => `
+      <div class="race-card">
+        <div class="race-header" onclick="toggleRace(${idx})">
+          <span>${race.category}</span>
+          <span id="arrow-${idx}">▾</span>
         </div>
-        <div class="score">${r.score || '-'}</div>
+        <div class="race-body" id="race-${idx}">
+          <table>
+            <thead><tr><th>#</th><th>الاسم</th><th>النادي</th><th>النتيجة</th><th>نقاط</th></tr></thead>
+            <tbody>
+              ${race.results.map(r => `
+                <tr class="${medalClass(r.place)}">
+                  <td>${r.place}</td>
+                  <td>${r.participant || '-'}</td>
+                  <td>${r.club || '-'}</td>
+                  <td>${r.score || '-'}</td>
+                  <td>${r.points}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
       </div>`).join('');
   }
 
@@ -221,69 +168,16 @@ async function refresh() {
   }).join('');
 }
 
-document.getElementById('categoryFilter').addEventListener('change', refresh);
-document.getElementById('refreshBtn').addEventListener('click', refresh);
-
-refresh();
-setInterval(refresh, 15000);
-</script>
-</body>
-</html>    </thead>
-    <tbody id="tbody"></tbody>
-  </table>
-  <div id="emptyMsg" class="empty" style="display:none;">لا توجد نتائج بعد. تأكد من إعداد روابط الأندية في clubs_config.json</div>
-
-  <div class="clubs" id="clubs"></div>
-
-<script>
-let lastCategory = "__all__";
-
-async function refresh() {
-  const res = await fetch('/api/results');
-  const data = await res.json();
-
-  const updatedEl = document.getElementById('updated');
-  updatedEl.textContent = data.updated_at ? ('آخر تحديث: ' + data.updated_at + (data.updating ? ' (جاري التحديث...)' : '')) : 'جاري التحميل الأول...';
-
-  const catSelect = document.getElementById('categoryFilter');
-  const current = catSelect.value || lastCategory;
-  catSelect.innerHTML = '<option value="__all__">كل الفئات</option>' +
-    data.categories.map(c => `<option value="${c}">${c}</option>`).join('');
-  if ([...catSelect.options].some(o => o.value === current)) catSelect.value = current;
-  lastCategory = catSelect.value;
-
-  let rows = data.rows;
-  if (lastCategory !== '__all__') rows = rows.filter(r => r.category === lastCategory);
-
-  const tbody = document.getElementById('tbody');
-  const emptyMsg = document.getElementById('emptyMsg');
-  if (!rows.length) {
-    tbody.innerHTML = '';
-    emptyMsg.style.display = 'block';
-  } else {
-    emptyMsg.style.display = 'none';
-    tbody.innerHTML = rows.map((r, i) => `
-      <tr>
-        <td>${i + 1}</td>
-        <td style="text-align:right">${r.participant || '-'}</td>
-        <td style="text-align:right">${r.club || '-'}</td>
-        <td style="text-align:right">${r.category || '-'}</td>
-        <td>${r.score || '-'}</td>
-      </tr>`).join('');
-  }
-
-  const clubsEl = document.getElementById('clubs');
-  clubsEl.innerHTML = data.clubs.map(c => {
-    const cls = c.statut === 'ok' ? 'ok' : (c.statut === 'non configuré' ? '' : 'err');
-    return `<span class="club-badge ${cls}">${c.nom}: ${c.statut === 'ok' ? c.nb + ' نتيجة' : c.statut}</span>`;
-  }).join('');
+function toggleRace(idx) {
+  const body = document.getElementById('race-' + idx);
+  const arrow = document.getElementById('arrow-' + idx);
+  body.classList.toggle('collapsed');
+  arrow.textContent = body.classList.contains('collapsed') ? '▸' : '▾';
 }
 
-document.getElementById('categoryFilter').addEventListener('change', refresh);
 document.getElementById('refreshBtn').addEventListener('click', refresh);
-
 refresh();
-setInterval(refresh, 15000);
+setInterval(refresh, 30000);
 </script>
 </body>
 </html>
