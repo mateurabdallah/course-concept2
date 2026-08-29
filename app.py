@@ -60,4 +60,41 @@ def api_startlist():
     return jsonify({"files": data["files"], "races": races, "total": len(data["entries"])})
 
 
-@app.rout
+@app.route("/api/startlist/upload", methods=["POST"])
+def api_startlist_upload():
+    files = request.files.getlist("files")
+    if not files:
+        return jsonify({"error": "لا توجد ملفات"}), 400
+    results = []
+    for f in files:
+        try:
+            content = f.read()
+            club, entries = parse_engagement_file(content, f.filename)
+            add_file_entries(f.filename, club, entries)
+            results.append({"filename": f.filename, "club": club, "count": len(entries)})
+        except Exception as e:
+            results.append({"filename": f.filename, "error": str(e)})
+    return jsonify({"results": results})
+
+
+@app.route("/api/startlist/clear", methods=["POST"])
+def api_startlist_clear():
+    clear_startlist_data()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/startlist/export.csv")
+def api_startlist_export_csv():
+    data = load_startlist_data()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Class", "Participant", "Affiliation"])
+    for e in data["entries"]:
+        writer.writerow([e["category"], e["participant"], e["club"]])
+    mem = io.BytesIO(output.getvalue().encode("utf-8-sig"))
+    return send_file(mem, mimetype="text/csv", as_attachment=True, download_name="start_list.csv")
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
