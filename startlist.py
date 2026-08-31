@@ -3,7 +3,8 @@ import json
 import pandas as pd
 from io import BytesIO
 
-DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "startlist_data.json")
+# استخدام مجلد /tmp المسموح بالكتابة فيه على Render
+DATA_FILE = "/tmp/startlist_data.json"
 
 
 def load_startlist_data():
@@ -17,8 +18,11 @@ def load_startlist_data():
 
 
 def save_startlist_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    try:
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Error saving data: {e}")
 
 
 def clear_startlist_data():
@@ -29,68 +33,77 @@ def parse_engagement_file(file_storage):
     filename = file_storage.filename
     content = file_storage.read()
 
-    # قراءة شيت Excel بالكامل
-    df = pd.read_excel(BytesIO(content), header=None)
-
-    # 1. استخراج اسم النادي بأمان
-    club_name = "نادي غير محدد"
     try:
-        for r in range(min(10, len(df))):
+        # قراءة شيت Excel بدون افتراض هيدر ثابت
+        df = pd.read_excel(BytesIO(content), header=None)
+
+        # 1. استخراج اسم النادي
+        club_name = "نادي غير محدد"
+        for r in range(min(12, len(df))):
             row_vals = [str(x) for x in df.iloc[r].values if pd.notna(x)]
             row_str = " ".join(row_vals)
-            if "Club" in row_str or "نادي" in row_str:
-                # استخراج اسم النادي وتنظيف النص
+            if any(k in row_str for k in ["Club", "club", "نادي"]):
                 clean_text = row_str.replace("Club :", "").replace("Club:", "").replace("N°", "").strip()
                 if clean_text:
                     club_name = clean_text
                     break
-    except Exception:
-        club_name = "نادي غير محدد"
 
-    # 2. تحديد صف الفئات ورؤوس الأعمدة
-    header_row_idx = 7  # الافتراضي هو الصف الثامن (index 7)
-    for r in range(len(df)):
-        row_str = " ".join([str(x) for x in df.iloc[r].values if pd.notna(x)])
-        if "Nom" in row_str or "Prénom" in row_str:
-            header_row_idx = r
-            break
+        # 2. تحديد صف رؤوس الأعمدة (Nom / Prénom)
+        header_row_idx = None
+        for r in range(len(df)):
+            row_vals = [str(x) for x in df.iloc[r].values if pd.notna(x)]
+            row_str = " ".join(row_vals)
+            if "Nom" in row_str or "Prénom" in row_str:
+                header_row_idx = r
+                break
 
-    # استخراج الفئات (تبدأ من العمود السادس / Index 5)
-    header_row = [str(c).strip() for c in df.iloc[header_row_idx].values]
-    category_columns = header_row[5:]
+        if header_row_idx is None:
+            header_row_idx = 7
 
-    entries = []
-
-    # 3. قراءة أسماء المشاركين والفئات
-    for idx in range(header_row_idx + 1, len(df)):
-        row = df.iloc[idx]
+        header_row = [str(c).strip() for c in df.iloc[header_row_idx].values]
         
-        # التأكد من وجود الاسم واللقب
-        nom = row.iloc[1] if len(row) > 1 else None
-        prenom = row.iloc[2] if len(row) > 2 else None
+        # تحديد بداية أعمدة الفئات (افتراضياً العمود 5 أو بعد N°licence)
+        start_cat_idx = 5
+        for idx_col, h_text in enumerate(header_row):
+            if "licence" in h_text.lower():
+                start_cat_idx = idx_col + 1
+                break
 
-        if pd.isna(nom) or str(nom).strip() == "" or str(nom).strip().lower() in ["nan", "none"]:
-            continue
+        category_columns = header_row[start_cat_idx:]
 
-        full_name = f"{str(nom).strip()} {str(prenom).strip() if pd.notna(prenom) and str(prenom).strip().lower() != 'nan' else ''}".strip()
+        entries = []
 
-        # استخراج الفئة المفعلة بـ x أو 1
-        selected_category = "غير محدد"
-        for c_offset, cat_name in enumerate(category_columns):
-            col_pos = 5 + c_offset
-            if col_pos < len(row):
-                val = str(row.iloc[col_pos]).strip().lower()
-                if val in ['x', '1', 'true', '1.0']:
-                    selected_category = cat_name
-                    break
+        # 3. قراءة أسماء المشاركين والفئات
+        for idx in range(header_row_idx + 1, len(df)):
+            row = df.iloc[idx]
+            
+            nom = str(row.iloc[1]).strip() if len(row) > 1 and pd.notna(row.iloc[1]) else ""
+            prenom = str(row.iloc[2]).strip() if len(row) > 2 and pd.notna(row.iloc[2]) else ""
 
-        entries.append({
-            "participant": full_name,
-            "club": club_name,
-            "category": selected_category
-        })
+            if not nom or nom.lower() in ["nan", "none"] or nom.isdigit():
+                continue
 
-    return filename, club_name, entries
+            full_name = f"{nom} {prenom}".strip()
+
+            selected_category = "غير محدد"
+            for c_offset, cat_name in enumerate(category_columns):
+                col_pos = start_cat_idx + c_offset
+                if col_pos < len(row):
+                    val = str(row.iloc[col_pos]).strip().lower()
+                    if val in ['x', '1', 'true', '1.0']:
+                        selected_category = cat_name
+                        break
+
+            entries.append({
+                "participant": full_name,
+                "club": club_name,
+                "category": selected_category
+            })
+
+        return filename, club_name, entries
+
+    except Exception as e:
+        raise RuntimeError(f"خطأ أثناء قراءة الملف: {str(e)}")
 
 
 def add_file_entries(filename, club_name, new_entries):
