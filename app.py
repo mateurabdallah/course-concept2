@@ -1,19 +1,13 @@
 import os
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 from startlist import (
     parse_engagement_file, add_file_entries, 
     load_startlist_data, clear_startlist_data, group_by_category
 )
 
 app = Flask(__name__)
+app.secret_key = 'secret_key_for_startlist'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-
-@app.after_request
-def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-    return response
 
 @app.route('/')
 def index():
@@ -23,11 +17,8 @@ def index():
 def startlist_page():
     return render_template('startlist.html')
 
-@app.route('/api/startlist/upload', methods=['POST', 'OPTIONS'])
+@app.route('/api/startlist/upload', methods=['POST'])
 def api_upload():
-    if request.method == 'OPTIONS':
-        return jsonify({'status': 'ok'}), 200
-
     try:
         files = request.files.getlist('files')
         if not files or files[0].filename == '':
@@ -40,7 +31,7 @@ def api_upload():
                 add_file_entries(filename, club_name, entries)
                 results.append({'filename': filename, 'club': club_name, 'count': len(entries)})
             except Exception as e:
-                return jsonify({'error': f"خطأ في الملف {file.filename}: {str(e)}"}), 400
+                return jsonify({'error': f"خطأ في {file.filename}: {str(e)}"}), 400
 
         return jsonify({'status': 'success', 'results': results}), 200
     except Exception as e:
