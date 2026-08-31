@@ -1,6 +1,6 @@
-flask
-requests
+Flask
+Flask-Cors
 gunicorn
-openpyxl
 pandas
+openpyxl
 xlrd
