@@ -29,62 +29,55 @@ def parse_engagement_file(file_storage):
     filename = file_storage.filename
     content = file_storage.read()
 
-    # قراءة شيت Excel بالكامل بدون افتراض هيدر ثابت
+    # قراءة شيت Excel بالكامل
     df = pd.read_excel(BytesIO(content), header=None)
 
-    # 1. البحث الآلي عن اسم النادي في أول 10 أسطر
+    # 1. استخراج اسم النادي بأمان
     club_name = "نادي غير محدد"
-    for r in range(min(10, len(df))):
-        for c in range(len(df.columns)):
-            val = str(df.iloc[r, c])
-            if "Club" in val or "club" in val or "نادي" in val:
-                # أخذ القيمة أو الخلية المجاورة لها
-                next_val = str(df.iloc[r, c + 1]) if c + 1 < len(df.columns) and pd.notna(df.iloc[r, c + 1]) else ""
-                combined = f"{val} {next_val}".strip()
-                club_name = combined.replace("Club :", "").replace("Club:", "").replace("N°", "").strip()
-                break
-        if club_name != "نادي غير محدد":
-            break
+    try:
+        for r in range(min(10, len(df))):
+            row_vals = [str(x) for x in df.iloc[r].values if pd.notna(x)]
+            row_str = " ".join(row_vals)
+            if "Club" in row_str or "نادي" in row_str:
+                # استخراج اسم النادي وتنظيف النص
+                clean_text = row_str.replace("Club :", "").replace("Club:", "").replace("N°", "").strip()
+                if clean_text:
+                    club_name = clean_text
+                    break
+    except Exception:
+        club_name = "نادي غير محدد"
 
-    # 2. البحث عن السطر الذي يحتوي على أسماء الأعمدة (Nom / Prénom)
-    header_row_idx = None
+    # 2. تحديد صف الفئات ورؤوس الأعمدة
+    header_row_idx = 7  # الافتراضي هو الصف الثامن (index 7)
     for r in range(len(df)):
         row_str = " ".join([str(x) for x in df.iloc[r].values if pd.notna(x)])
         if "Nom" in row_str or "Prénom" in row_str:
             header_row_idx = r
             break
 
-    if header_row_idx is None:
-        raise ValueError("لم يتم العثور على جدول المشاركين داخل الملف")
-
+    # استخراج الفئات (تبدأ من العمود السادس / Index 5)
     header_row = [str(c).strip() for c in df.iloc[header_row_idx].values]
-    
-    # تحديد موقع الفئات (تأتي عادة بعد رقم الرخصة N°licence)
-    start_cat_idx = 5
-    for idx_col, h_text in enumerate(header_row):
-        if "licence" in h_text.lower():
-            start_cat_idx = idx_col + 1
-            break
-
-    category_columns = header_row[start_cat_idx:]
+    category_columns = header_row[5:]
 
     entries = []
 
-    # 3. قراءة المشاركين من السطر التالي للهيدر
+    # 3. قراءة أسماء المشاركين والفئات
     for idx in range(header_row_idx + 1, len(df)):
         row = df.iloc[idx]
+        
+        # التأكد من وجود الاسم واللقب
         nom = row.iloc[1] if len(row) > 1 else None
         prenom = row.iloc[2] if len(row) > 2 else None
 
-        if pd.isna(nom) or str(nom).strip() == "" or str(nom).strip().isdigit():
+        if pd.isna(nom) or str(nom).strip() == "" or str(nom).strip().lower() in ["nan", "none"]:
             continue
 
-        full_name = f"{str(nom).strip()} {str(prenom).strip() if pd.notna(prenom) else ''}".strip()
+        full_name = f"{str(nom).strip()} {str(prenom).strip() if pd.notna(prenom) and str(prenom).strip().lower() != 'nan' else ''}".strip()
 
-        # استخراج الفئة المفعلة بـ x
+        # استخراج الفئة المفعلة بـ x أو 1
         selected_category = "غير محدد"
         for c_offset, cat_name in enumerate(category_columns):
-            col_pos = start_cat_idx + c_offset
+            col_pos = 5 + c_offset
             if col_pos < len(row):
                 val = str(row.iloc[col_pos]).strip().lower()
                 if val in ['x', '1', 'true', '1.0']:
@@ -93,7 +86,7 @@ def parse_engagement_file(file_storage):
 
         entries.append({
             "participant": full_name,
-            "club": club_name if club_name else "نادي غير محدد",
+            "club": club_name,
             "category": selected_category
         })
 
