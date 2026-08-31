@@ -16,18 +16,19 @@ def index():
 def startlist_page():
     return render_template('startlist.html')
 
-# مسار رفع الملفات
+# مسار الرفع
 @app.route('/api/startlist/upload', methods=['POST'])
 def api_upload():
     try:
+        if 'files' not in request.files:
+            return jsonify({'error': 'لم يتم العثور على حقل الملفات'}), 400
+            
         files = request.files.getlist('files')
-        if not files:
+        if not files or files[0].filename == '':
             return jsonify({'error': 'لم يتم اختيار أي ملف'}), 400
 
         results = []
         for file in files:
-            if file.filename == '':
-                continue
             try:
                 filename, club_name, entries = parse_engagement_file(file)
                 add_file_entries(filename, club_name, entries)
@@ -35,7 +36,7 @@ def api_upload():
             except Exception as e:
                 results.append({'filename': file.filename, 'error': str(e)})
 
-        return jsonify({'results': results})
+        return jsonify({'status': 'success', 'results': results}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -49,16 +50,16 @@ def api_data():
             'files': data.get('files', []),
             'total_entries': len(data.get('entries', [])),
             'races': races
-        })
+        }), 200
     except Exception as e:
-        return jsonify({'files': [], 'total_entries': 0, 'races': [], 'error': str(e)})
+        return jsonify({'files': [], 'total_entries': 0, 'races': [], 'error': str(e)}), 200
 
-# مسار مسح البيانات
+# مسار المسح
 @app.route('/api/startlist/clear', methods=['POST'])
 def api_clear():
     try:
         clear_startlist_data()
-        return jsonify({'status': 'ok'})
+        return jsonify({'status': 'ok'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
