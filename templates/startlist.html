@@ -1,108 +1,149 @@
-import os
-import json
-import pandas as pd
-from io import BytesIO
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>قوائم الانطلاق - سباق Concept2</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+    margin: 0; padding: 0; color: #e2e8f0; min-height: 100vh;
+  }
+  .header {
+    background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+    padding: 24px 20px 20px; text-align: center;
+  }
+  .header h1 { margin: 0 0 4px; font-size: 20px; font-weight: 800; color: #fff; }
+  .header a { color: rgba(255,255,255,0.9); font-size: 12px; text-decoration: underline; }
+  .container { max-width: 900px; margin: 0 auto; padding: 18px 14px 50px; }
 
-DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "startlist_data.json")
+  .upload-box {
+    background: #1e293b; border: 2px dashed #334155; border-radius: 14px;
+    padding: 20px; text-align: center; margin-bottom: 16px;
+  }
+  input[type=file] { color: #e2e8f0; font-size: 13px; margin-bottom: 10px; }
+  button {
+    background: linear-gradient(135deg, #059669, #0d9488); color: #fff; border: none;
+    padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 13px; width: 100%;
+  }
+  button.secondary { background: #334155; margin-top: 8px; }
+  button.small { width: auto; padding: 6px 12px; font-size: 12px; }
 
-def load_startlist_data():
-    """تحميل البيانات المخزنة محلياً"""
-    if not os.path.exists(DATA_FILE):
-        return {"files": [], "entries": []}
-    try:
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {"files": [], "entries": []}
+  .files-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+  .file-badge { background: #334155; padding: 5px 11px; border-radius: 20px; font-size: 11px; }
+  .file-badge.ok { background: rgba(74,222,128,0.15); color: #4ade80; }
+  .file-badge.err { background: rgba(248,113,113,0.15); color: #f87171; }
 
-def save_startlist_data(data):
-    """حفظ البيانات في ملف JSON محلي"""
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+  .summary { text-align: center; margin: 16px 0; font-size: 14px; color: #94a3b8; }
+  .summary b { color: #4ade80; }
 
-def clear_startlist_data():
-    """مسح كافة البيانات"""
-    save_startlist_data({"files": [], "entries": []})
+  .race-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+  .race-header { padding: 10px 14px; background: #273449; font-weight: 700; font-size: 13px; color: #5eead4; cursor: pointer; display: flex; justify-content: space-between; }
+  .race-body { padding: 6px 14px 10px; }
+  .race-body.collapsed { display: none; }
+  .entry-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #263548; font-size: 13px; }
+  .entry-row .club { color: #94a3b8; font-size: 11px; }
 
-def parse_engagement_file(file_storage):
-    """
-    قراءة واستخراج بيانات بطاقة الانخراط (Excel)
-    """
-    filename = file_storage.filename
-    content = file_storage.read()
-    
-    # قراءة شيت Excel
-    df = pd.read_excel(BytesIO(content), header=None)
-    
-    # 1. استخراج اسم النادي من الخلية B5 (Index 4, Column 1)
-    club_raw = str(df.iloc[4, 1]) if pd.notna(df.iloc[4, 1]) else "نادي غير محدد"
-    club_name = club_raw.replace("Club :", "").strip()
-    if not club_name:
-        club_name = "نادي غير محدد"
+  .actions { display: flex; gap: 8px; margin: 16px 0; }
+  .actions a, .actions button { flex: 1; text-align: center; text-decoration: none; }
+  a.btn-link {
+    background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff;
+    padding: 10px; border-radius: 10px; font-weight: 700; font-size: 13px; display: block;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>📋 قوائم الانطلاق</h1>
+    <a href="/">← رجوع للترتيب العام</a>
+  </div>
 
-    # 2. استخراج أسماء الفئات من السطر رقم 8 (Index 7)
-    header_row = [str(c).strip() for c in df.iloc[7].values]
-    category_columns = header_row[5:]  # الفئات تبدأ من العمود 6 (Index 5)
+  <div class="container">
+    <div class="upload-box">
+      <p style="margin:0 0 10px; font-size:13px; color:#94a3b8;">ارفع ملفات Excel (فيش الانخراط) لكل نادي</p>
+      <input type="file" id="fileInput" multiple accept=".xlsx,.xls"><br>
+      <button id="uploadBtn">⬆️ رفع الملفات</button>
+    </div>
 
-    entries = []
+    <div id="uploadResult" class="files-list"></div>
 
-    # 3. المرور على المشاركين المبتدئين من السطر رقم 9 (Index 8)
-    for idx in range(8, len(df)):
-        row = df.iloc[idx]
-        nom = row.iloc[1]
-        prenom = row.iloc[2]
-        
-        # التوقف عند نهاية الجدول أو السطور الفارغة
-        if pd.isna(nom) or str(nom).strip() == "":
-            continue
-            
-        full_name = f"{str(nom).strip()} {str(prenom).strip()}"
-        
-        # البحث عن الفئة المشارك فيها (التي بها علامة x)
-        selected_category = "غير محدد"
-        for c_idx, cat_name in enumerate(category_columns, start=5):
-            val = str(row.iloc[c_idx]).strip().lower()
-            if val in ['x', '1', 'true']:
-                selected_category = cat_name
-                break
-                
-        entries.append({
-            "participant": full_name,
-            "club": club_name,
-            "category": selected_category
-        })
+    <div class="actions">
+      <a href="/api/startlist/export.csv" class="btn-link">⬇️ تحميل CSV للاستيراد</a>
+      <button class="secondary small" id="clearBtn">🗑️ مسح الكل</button>
+    </div>
 
-    return filename, club_name, entries
+    <div class="summary" id="summary"></div>
 
-def add_file_entries(filename, club_name, new_entries):
-    """تحديث البيانات المخزنة وتجنب تكرار الملفات"""
-    data = load_startlist_data()
-    
-    # إزالة التكرار للملفات السابقة بنفس الاسم
-    data["files"] = [f for f in data["files"] if f.get("filename") != filename]
-    data["entries"] = [e for e in data["entries"] if e.get("_filename") != filename]
-    
-    data["files"].append({"filename": filename, "club": club_name, "count": len(new_entries)})
-    
-    for entry in new_entries:
-        entry["_filename"] = filename
-        data["entries"].append(entry)
-        
-    save_startlist_data(data)
+    <div id="racesList"></div>
+  </div>
 
-def group_by_category(entries):
-    """تجميع المشاركين حسب الفئة للعرض في الواجهة"""
-    categories = {}
-    for entry in entries:
-        cat = entry.get("category", "غير محدد")
-        if cat not in categories:
-            categories[cat] = []
-        categories[cat].append(entry)
-        
-    races = []
-    for cat in sorted(categories.keys()):
-        races.append({
-            "category": cat,
-            "entries": categories[cat]
-        })
-    return races
+<script>
+async function loadData() {
+  const res = await fetch('/api/startlist');
+  const data = await res.json();
+
+  document.getElementById('summary').innerHTML = `عدد الملفات: <b>${data.files.length}</b> — عدد المشاركات: <b>${data.total}</b>`;
+
+  const racesList = document.getElementById('racesList');
+  if (!data.races.length) {
+    racesList.innerHTML = '<p style="text-align:center; color:#64748b; padding:30px 0;">لا توجد قوائم بعد — ارفع الملفات فوق</p>';
+    return;
+  }
+  racesList.innerHTML = data.races.map((race, idx) => `
+    <div class="race-card">
+      <div class="race-header" onclick="toggleRace(${idx})">
+        <span>${race.category} (${race.entries.length})</span>
+        <span id="arrow-${idx}">▾</span>
+      </div>
+      <div class="race-body" id="race-${idx}">
+        ${race.entries.map(e => `
+          <div class="entry-row">
+            <span>${e.participant}</span>
+            <span class="club">${e.club}</span>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function toggleRace(idx) {
+  const body = document.getElementById('race-' + idx);
+  const arrow = document.getElementById('arrow-' + idx);
+  body.classList.toggle('collapsed');
+  arrow.textContent = body.classList.contains('collapsed') ? '▸' : '▾';
+}
+
+document.getElementById('uploadBtn').addEventListener('click', async () => {
+  const input = document.getElementById('fileInput');
+  if (!input.files.length) { alert('اختر ملف واحد على الأقل'); return; }
+  const formData = new FormData();
+  for (const f of input.files) formData.append('files', f);
+
+  const btn = document.getElementById('uploadBtn');
+  btn.textContent = 'جاري الرفع...';
+  const res = await fetch('/api/startlist/upload', { method: 'POST', body: formData });
+  const data = await res.json();
+  btn.textContent = '⬆️ رفع الملفات';
+
+  const resultEl = document.getElementById('uploadResult');
+  resultEl.innerHTML = data.results.map(r => {
+    if (r.error) return `<span class="file-badge err">${r.filename}: خطأ</span>`;
+    return `<span class="file-badge ok">${r.club}: ${r.count} مشارك</span>`;
+  }).join('');
+
+  input.value = '';
+  loadData();
+});
+
+document.getElementById('clearBtn').addEventListener('click', async () => {
+  if (!confirm('متأكد تحب تمسح كل القوائم؟')) return;
+  await fetch('/api/startlist/clear', { method: 'POST' });
+  document.getElementById('uploadResult').innerHTML = '';
+  loadData();
+});
+
+loadData();
+</script>
+</body>
+</html>
