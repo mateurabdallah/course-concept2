@@ -71,24 +71,25 @@
             }
 
             const formData = new FormData();
-            for (const f of input.files) formData.append('files', f);
+            for (let i = 0; i < input.files.length; i++) {
+                formData.append('files', input.files[i]);
+            }
 
             const btn = document.getElementById('uploadBtn');
             btn.textContent = 'جاري الرفع والمعالجة...';
             btn.disabled = true;
 
             try {
-                const res = await fetch('/api/startlist/upload', { 
-                    method: 'POST', 
-                    body: formData 
+                const res = await fetch('/api/startlist/upload', {
+                    method: 'POST',
+                    body: formData
                 });
 
-                const result = await res.json();
-
                 if (!res.ok) {
-                    alert('خطأ في السيرفر: ' + (result.error || 'حدث خطأ أثناء القراءة'));
+                    const errData = await res.json().catch(() => ({}));
+                    alert('خطأ السيرفر: ' + (errData.error || res.statusText));
                 } else {
-                    alert('تم رفع المعطيات واستخراج المشاركين بنجاح!');
+                    alert('تم رفع الملفات واستخراج المعطيات بنجاح!');
                     input.value = '';
                     loadData();
                 }
