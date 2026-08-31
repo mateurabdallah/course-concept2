@@ -59,7 +59,7 @@
                     </div>
                 `).join('');
             } catch (err) {
-                console.log("جاري استدعاء البيانات...");
+                console.error(err);
             }
         }
 
@@ -74,21 +74,26 @@
             for (const f of input.files) formData.append('files', f);
 
             const btn = document.getElementById('uploadBtn');
-            btn.textContent = 'جاري الرفع...';
+            btn.textContent = 'جاري الرفع والمعالجة...';
             btn.disabled = true;
 
             try {
-                const res = await fetch('/api/startlist/upload', { method: 'POST', body: formData });
+                const res = await fetch('/api/startlist/upload', { 
+                    method: 'POST', 
+                    body: formData 
+                });
+
                 const result = await res.json();
-                
+
                 if (!res.ok) {
-                    alert('خطأ من السيرفر: ' + (result.error || 'تعذر معالجة الطلب'));
+                    alert('خطأ في السيرفر: ' + (result.error || 'حدث خطأ أثناء القراءة'));
                 } else {
+                    alert('تم رفع المعطيات واستخراج المشاركين بنجاح!');
                     input.value = '';
                     loadData();
                 }
             } catch (err) {
-                alert('تعذر الاتصال بالسيرفر. يرجى انتظار دقيقة حتى ينتهي Render من إعادة البناء.');
+                alert('حدث خطأ في شبكة الاتصال: ' + err.message);
             } finally {
                 btn.textContent = '⬆️ رفع الملفات';
                 btn.disabled = false;
