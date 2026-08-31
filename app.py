@@ -1,6 +1,5 @@
-from flask import Flask, render_template, request, jsonify, send_file
 import os
-import io
+from flask import Flask, render_template, request, jsonify
 
 from startlist import (
     parse_engagement_file, add_file_entries, 
@@ -17,12 +16,13 @@ def index():
 def startlist_page():
     return render_template('startlist.html')
 
+# مسار رفع الملفات
 @app.route('/api/startlist/upload', methods=['POST'])
 def api_upload():
     try:
         files = request.files.getlist('files')
         if not files:
-            return jsonify({'error': 'No files uploaded'}), 400
+            return jsonify({'error': 'لم يتم اختيار أي ملف'}), 400
 
         results = []
         for file in files:
@@ -39,20 +39,29 @@ def api_upload():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# مسار جلب البيانات
 @app.route('/api/startlist/data', methods=['GET'])
 def api_data():
-    data = load_startlist_data()
-    races = group_by_category(data.get('entries', []))
-    return jsonify({
-        'files': data.get('files', []),
-        'total_entries': len(data.get('entries', [])),
-        'races': races
-    })
+    try:
+        data = load_startlist_data()
+        races = group_by_category(data.get('entries', []))
+        return jsonify({
+            'files': data.get('files', []),
+            'total_entries': len(data.get('entries', [])),
+            'races': races
+        })
+    except Exception as e:
+        return jsonify({'files': [], 'total_entries': 0, 'races': [], 'error': str(e)})
 
+# مسار مسح البيانات
 @app.route('/api/startlist/clear', methods=['POST'])
 def api_clear():
-    clear_startlist_data()
-    return jsonify({'status': 'ok'})
+    try:
+        clear_startlist_data()
+        return jsonify({'status': 'ok'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
