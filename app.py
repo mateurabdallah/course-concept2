@@ -1,5 +1,6 @@
 import os
 from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 
 from startlist import (
     parse_engagement_file, add_file_entries, 
@@ -7,6 +8,11 @@ from startlist import (
 )
 
 app = Flask(__name__)
+# تفعيل CORS لجميع المسارات والمصادر
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+# زيادة الحد الأقصى لحجم الملفات المرفوعة إلى 16 ميجابايت
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 @app.route('/')
 def index():
@@ -16,12 +22,14 @@ def index():
 def startlist_page():
     return render_template('startlist.html')
 
-# مسار الرفع
-@app.route('/api/startlist/upload', methods=['POST'])
+@app.route('/api/startlist/upload', methods=['POST', 'OPTIONS'])
 def api_upload():
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+
     try:
         if 'files' not in request.files:
-            return jsonify({'error': 'لم يتم العثور على حقل الملفات'}), 400
+            return jsonify({'error': 'لم يتم العثور على حقل الملفات في الطلب'}), 400
             
         files = request.files.getlist('files')
         if not files or files[0].filename == '':
@@ -40,7 +48,6 @@ def api_upload():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# مسار جلب البيانات
 @app.route('/api/startlist/data', methods=['GET'])
 def api_data():
     try:
@@ -54,7 +61,6 @@ def api_data():
     except Exception as e:
         return jsonify({'files': [], 'total_entries': 0, 'races': [], 'error': str(e)}), 200
 
-# مسار المسح
 @app.route('/api/startlist/clear', methods=['POST'])
 def api_clear():
     try:
