@@ -85,16 +85,17 @@
                     body: formData
                 });
 
+                const result = await res.json();
+
                 if (!res.ok) {
-                    const errData = await res.json().catch(() => ({}));
-                    alert('خطأ السيرفر: ' + (errData.error || res.statusText));
+                    alert('خطأ: ' + (result.error || 'فشل الرفع'));
                 } else {
-                    alert('تم رفع الملفات واستخراج المعطيات بنجاح!');
+                    alert('تم رفع الملفات بنجاح!');
                     input.value = '';
                     loadData();
                 }
             } catch (err) {
-                alert('حدث خطأ في شبكة الاتصال: ' + err.message);
+                alert('تعذر الاتصال بالخادم، يرجى تحديث الصفحة وإعادة المحاولة.');
             } finally {
                 btn.textContent = '⬆️ رفع الملفات';
                 btn.disabled = false;
