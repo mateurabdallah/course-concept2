@@ -82,21 +82,18 @@ def rank_race(rows):
             r2["_secs"] = secs
             timed.append(r2)
 
+    # ترتيب المتسابقين حسب الزمن (من الأسرع للأبطأ)
     timed.sort(key=lambda r: r["_secs"])
 
     results = []
-    place = 0
-    prev_secs = None
-    skipped = 0
-    for r in timed:
-        place += 1
-        if prev_secs is not None and r["_secs"] == prev_secs:
+    
+    # حساب الترتيب مع مراعاة التعادل بدون أخطاء عملية
+    for i, r in enumerate(timed):
+        if i > 0 and r["_secs"] == timed[i - 1]["_secs"]:
             actual_place = results[-1]["place"]
-            skipped += 1
         else:
-            actual_place = place
-            place += skipped
-            skipped = 0
+            actual_place = i + 1
+
         points = POINTS_SCALE.get(actual_place, 0)
         results.append({
             "place": actual_place,
@@ -105,8 +102,8 @@ def rank_race(rows):
             "score": r["score"],
             "points": points,
         })
-        prev_secs = r["_secs"]
 
+    # إضافة من هم بدون توقيت أو غائبين
     for r in untimed:
         results.append({
             "place": "ABS",
@@ -122,11 +119,14 @@ def rank_race(rows):
 def build_combined_results(config):
     all_rows = []
     club_status = []
-    for club in config["clubs"]:
-        name, url = club["nom"], club["url"]
-        if "REMPLACER_ID" in url:
-            club_status.append({"nom": name, "statut": "non configuré", "nb": 0})
+    for club in config.get("clubs", []):
+        name, url = club.get("nom", "Club"), club.get("url", "")
+        
+        # حماية: تجاهل الرابط إذا كان غير مكتمل أو محلي غير صالح
+        if "REMPLACER_ID" in url or not url.startswith("http"):
+            club_status.append({"nom": name, "statut": "غير محدد (مؤقت)", "nb": 0})
             continue
+
         rows, error = fetch_club_results(name, url)
         if error:
             club_status.append({"nom": name, "statut": f"erreur: {error}", "nb": 0})
