@@ -1,98 +1,99 @@
-"""Parsing des fiches d'engagement Excel et fusion en listes de départ par catégorie."""
-
-import io
-import json
 import os
+import json
+import pandas as pd
+from io import BytesIO
 
-import openpyxl
-
-DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "startlist_data.json")
-
-
-def parse_engagement_file(file_bytes, filename_hint=""):
-    """Parse une fiche d'engagement et retourne (nom_club, liste d'entrées)."""
-    wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
-    ws = wb[wb.sheetnames[0]]
-    rows = list(ws.iter_rows(values_only=True))
-
-    club_name = None
-    for row in rows[:6]:
-        for cell in row:
-            if isinstance(cell, str) and cell.strip().lower().startswith("club"):
-                parts = cell.split(":", 1)
-                if len(parts) > 1 and parts[1].strip():
-                    club_name = parts[1].strip()
-                break
-        if club_name:
-            break
-    if not club_name:
-        club_name = filename_hint or "نادي غير محدد"
-
-    categories = {}
-    header_row_idx = None
-    for i, row in enumerate(rows):
-        if row and len(row) > 1 and isinstance(row[1], str) and row[1].strip().lower().startswith("nom"):
-            header_row_idx = i
-            for j, cell in enumerate(row):
-                if j >= 5 and isinstance(cell, str) and cell.strip():
-                    categories[j] = cell.strip()
-            break
-
-    entries = []
-    if header_row_idx is None:
-        return club_name, entries
-
-    for row in rows[header_row_idx + 1:]:
-        if not row or row[0] is None:
-            continue
-        try:
-            float(row[0])
-        except (TypeError, ValueError):
-            continue
-        nom = (row[1] or "").strip() if isinstance(row[1], str) else ""
-        prenom = (row[2] or "").strip() if isinstance(row[2], str) else ""
-        full_name = f"{prenom} {nom}".strip()
-        if not full_name:
-            continue
-        for col_idx, cat in categories.items():
-            if col_idx < len(row) and row[col_idx] is not None:
-                val = str(row[col_idx]).strip().lower()
-                if val == "x":
-                    entries.append({"participant": full_name, "club": club_name, "category": cat})
-
-    return club_name, entries
+DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "startlist_data.json")
 
 
 def load_startlist_data():
-    if not os.path.exists(DATA_PATH):
+    if not os.path.exists(DATA_FILE):
         return {"files": [], "entries": []}
-    with open(DATA_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"files": [], "entries": []}
 
 
 def save_startlist_data(data):
-    with open(DATA_PATH, "w", encoding="utf-8") as f:
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-
-
-def add_file_entries(filename, club_name, entries):
-    data = load_startlist_data()
-    data["files"] = [f for f in data["files"] if f != filename]
-    data["entries"] = [e for e in data["entries"] if e.get("_source") != filename]
-    for e in entries:
-        e["_source"] = filename
-    data["files"].append(filename)
-    data["entries"].extend(entries)
-    save_startlist_data(data)
-    return data
 
 
 def clear_startlist_data():
     save_startlist_data({"files": [], "entries": []})
 
 
+def parse_engagement_file(file_storage):
+    filename = file_storage.filename
+    content = file_storage.read()
+    
+    df = pd.read_excel(BytesIO(content), header=None)
+    
+    club_raw = str(df.iloc[4, 1]) if pd.notna(df.iloc[4, 1]) else "نادي غير محدد"
+    club_name = club_raw.replace("Club :", "").strip()
+    if not club_name:
+        club_name = "نادي غير محدد"
+
+    header_row = [str(c).strip() for c in df.iloc[7].values]
+    category_columns = header_row[5:]
+
+    entries = []
+
+    for idx in range(8, len(df)):
+        row = df.iloc[idx]
+        nom = row.iloc[1]
+        prenom = row.iloc[2]
+        
+        if pd.isna(nom) or str(nom).strip() == "":
+            continue
+            
+        full_name = f"{str(nom).strip()} {str(prenom).strip()}"
+        
+        selected_category = "غير محدد"
+        for c_idx, cat_name in enumerate(category_columns, start=5):
+            val = str(row.iloc[c_idx]).strip().lower()
+            if val in ['x', '1', 'true']:
+                selected_category = cat_name
+                break
+                
+        entries.append({
+            "participant": full_name,
+            "club": club_name,
+            "category": selected_category
+        })
+
+    return filename, club_name, entries
+
+
+def add_file_entries(filename, club_name, new_entries):
+    data = load_startlist_data()
+    
+    data["files"] = [f for f in data["files"] if f.get("filename") != filename]
+    data["entries"] = [e for e in data["entries"] if e.get("_filename") != filename]
+    
+    data["files"].append({"filename": filename, "club": club_name, "count": len(new_entries)})
+    
+    for entry in new_entries:
+        entry["_filename"] = filename
+        data["entries"].append(entry)
+        
+    save_startlist_data(data)
+
+
 def group_by_category(entries):
-    by_cat = {}
-    for e in entries:
-        by_cat.setdefault(e["category"], []).append(e)
-    return dict(sorted(by_cat.items()))
+    categories = {}
+    for entry in entries:
+        cat = entry.get("category", "غير محدد")
+        if cat not in categories:
+            categories[cat] = []
+        categories[cat].append(entry)
+        
+    races = []
+    for cat in sorted(categories.keys()):
+        races.append({
+            "category": cat,
+            "entries": categories[cat]
+        })
+    return races
