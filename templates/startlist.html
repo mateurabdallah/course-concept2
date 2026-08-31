@@ -59,7 +59,7 @@
                     </div>
                 `).join('');
             } catch (err) {
-                console.log("إنتظار استجابة السيرفر...");
+                console.log("جاري استدعاء البيانات...");
             }
         }
 
@@ -79,12 +79,16 @@
 
             try {
                 const res = await fetch('/api/startlist/upload', { method: 'POST', body: formData });
-                if (!res.ok) throw new Error('خطأ في الاتصال بالخادم');
+                const result = await res.json();
                 
-                input.value = '';
-                loadData();
+                if (!res.ok) {
+                    alert('خطأ من السيرفر: ' + (result.error || 'تعذر معالجة الطلب'));
+                } else {
+                    input.value = '';
+                    loadData();
+                }
             } catch (err) {
-                alert('تعذر الاتصال بالسيرفر، تأكد من تحديث الخادم على Render.');
+                alert('تعذر الاتصال بالسيرفر. يرجى انتظار دقيقة حتى ينتهي Render من إعادة البناء.');
             } finally {
                 btn.textContent = '⬆️ رفع الملفات';
                 btn.disabled = false;
