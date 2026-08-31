@@ -1,114 +1,58 @@
+from flask import Flask, render_template, request, jsonify, send_file
 import os
-import json
-import pandas as pd
-from io import BytesIO
 
-DATA_FILE = "/tmp/startlist_data.json"
+from startlist import (
+    parse_engagement_file, add_file_entries, 
+    load_startlist_data, clear_startlist_data, group_by_category
+)
 
-def load_startlist_data():
-    if not os.path.exists(DATA_FILE):
-        return {"files": [], "entries": []}
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/startlist')
+def startlist_page():
+    return render_template('startlist.html')
+
+@app.route('/api/startlist/upload', methods=['POST'])
+def api_upload():
     try:
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {"files": [], "entries": []}
+        files = request.files.getlist('files')
+        if not files:
+            return jsonify({'error': 'لم يتم اختيار أي ملف'}), 400
 
-def save_startlist_data(data):
-    try:
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        results = []
+        for file in files:
+            if file.filename == '':
+                continue
+            try:
+                filename, club_name, entries = parse_engagement_file(file)
+                add_file_entries(filename, club_name, entries)
+                results.append({'filename': filename, 'club': club_name, 'count': len(entries)})
+            except Exception as e:
+                results.append({'filename': file.filename, 'error': str(e)})
+
+        return jsonify({'results': results})
     except Exception as e:
-        print(f"Error saving: {e}")
+        return jsonify({'error': str(e)}), 500
 
-def clear_startlist_data():
-    save_startlist_data({"files": [], "entries": []})
-
-def parse_engagement_file(file_storage):
-    filename = file_storage.filename
-    content = file_storage.read()
-
-    df = pd.read_excel(BytesIO(content), header=None)
-
-    club_name = "نادي غير محدد"
-    for r in range(min(12, len(df))):
-        row_vals = [str(x) for x in df.iloc[r].values if pd.notna(x)]
-        row_str = " ".join(row_vals)
-        if any(k in row_str for k in ["Club", "club", "نادي"]):
-            clean_text = row_str.replace("Club :", "").replace("Club:", "").replace("N°", "").strip()
-            if clean_text:
-                club_name = clean_text
-                break
-
-    header_row_idx = 7
-    for r in range(len(df)):
-        row_vals = [str(x) for x in df.iloc[r].values if pd.notna(x)]
-        row_str = " ".join(row_vals)
-        if "Nom" in row_str or "Prénom" in row_str:
-            header_row_idx = r
-            break
-
-    header_row = [str(c).strip() for c in df.iloc[header_row_idx].values]
-    start_cat_idx = 5
-    for idx_col, h_text in enumerate(header_row):
-        if "licence" in h_text.lower():
-            start_cat_idx = idx_col + 1
-            break
-
-    category_columns = header_row[start_cat_idx:]
-    entries = []
-
-    for idx in range(header_row_idx + 1, len(df)):
-        row = df.iloc[idx]
-        nom = str(row.iloc[1]).strip() if len(row) > 1 and pd.notna(row.iloc[1]) else ""
-        prenom = str(row.iloc[2]).strip() if len(row) > 2 and pd.notna(row.iloc[2]) else ""
-
-        if not nom or nom.lower() in ["nan", "none"] or nom.isdigit():
-            continue
-
-        full_name = f"{nom} {prenom}".strip()
-        selected_category = "غير محدد"
-
-        for c_offset, cat_name in enumerate(category_columns):
-            col_pos = start_cat_idx + c_offset
-            if col_pos < len(row):
-                val = str(row.iloc[col_pos]).strip().lower()
-                if val in ['x', '1', 'true', '1.0']:
-                    selected_category = cat_name
-                    break
-
-        entries.append({
-            "participant": full_name,
-            "club": club_name,
-            "category": selected_category
-        })
-
-    return filename, club_name, entries
-
-def add_file_entries(filename, club_name, new_entries):
+@app.route('/api/startlist/data', methods=['GET'])
+def api_data():
     data = load_startlist_data()
-    data["files"] = [f for f in data["files"] if f.get("filename") != filename]
-    data["entries"] = [e for e in data["entries"] if e.get("_filename") != filename]
+    races = group_by_category(data.get('entries', []))
+    return jsonify({
+        'files': data.get('files', []),
+        'total_entries': len(data.get('entries', [])),
+        'races': races
+    })
 
-    data["files"].append({"filename": filename, "club": club_name, "count": len(new_entries)})
-    for entry in new_entries:
-        entry["_filename"] = filename
-        data["entries"].append(entry)
+@app.route('/api/startlist/clear', methods=['POST'])
+def api_clear():
+    clear_startlist_data()
+    return jsonify({'status': 'ok'})
 
-    save_startlist_data(data)
-
-def group_by_category(entries):
-    categories = {}
-    for entry in entries:
-        cat = entry.get("category", "غير محدد")
-        if cat not in categories:
-            categories[cat] = []
-        categories[cat].append(entry)
-
-    races = []
-    for cat in sorted(categories.keys()):
-        races.append({
-            "category": cat,
-            "entries": categories[cat]
-        })
-    return races
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
