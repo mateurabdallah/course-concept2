@@ -12,7 +12,6 @@
         button:disabled { background-color: #64748b; cursor: not-allowed; }
         input[type="file"] { background: #334155; padding: 10px; border-radius: 6px; color: white; margin-bottom: 10px; }
         .btn-danger { background-color: #ef4444; }
-        .btn-primary { background-color: #6366f1; }
     </style>
 </head>
 <body>
@@ -25,7 +24,6 @@
             <input type="file" id="fileInput" multiple accept=".xlsx, .xls">
             <br><br>
             <button id="uploadBtn">⬆️ رفع الملفات</button>
-            <div id="uploadResult" style="margin-top: 15px;"></div>
         </div>
 
         <div class="card">
@@ -40,6 +38,7 @@
         async function loadData() {
             try {
                 const res = await fetch('/api/startlist/data');
+                if (!res.ok) return;
                 const data = await res.json();
                 
                 document.getElementById('fileCount').textContent = data.files ? data.files.length : 0;
@@ -60,7 +59,7 @@
                     </div>
                 `).join('');
             } catch (err) {
-                console.error("خطأ في جلب البيانات:", err);
+                console.log("إنتظار استجابة السيرفر...");
             }
         }
 
@@ -80,13 +79,12 @@
 
             try {
                 const res = await fetch('/api/startlist/upload', { method: 'POST', body: formData });
-                if (!res.ok) throw new Error('خطأ أثناء المعالجة (' + res.status + ')');
+                if (!res.ok) throw new Error('خطأ في الاتصال بالخادم');
                 
-                const data = await res.json();
                 input.value = '';
                 loadData();
             } catch (err) {
-                alert(err.message || 'حدث خطأ أثناء رفع الملفات');
+                alert('تعذر الاتصال بالسيرفر، تأكد من تحديث الخادم على Render.');
             } finally {
                 btn.textContent = '⬆️ رفع الملفات';
                 btn.disabled = false;
